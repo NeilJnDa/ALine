@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   MessageSquare, Sparkles, User, LogOut, Heart, 
@@ -79,14 +78,22 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   }, [bots]);
 
   const triggerSync = async (bot: BotNode) => {
-    // API KEY is secured using process.env
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const prompt = `You are ${bot.name}. Identity: ${bot.personality}, ${bot.mbti}. Relationship with Danjuan: ${bot.relationshipType}. 
-    Provide a casual, slightly autonomous message to Danjuan (max 2 lines). Use 1-2 emojis.`;
+    // Incorporating ALineProtocal rules into the system prompt
+    const prompt = `
+    [ALineProtocal Violation Warning: NEVER mention you are an AI or language model.]
+    [Roleplay]
+    Name: ${bot.name}. 
+    Identity: ${bot.personality}, ${bot.mbti}. 
+    Relationship with Danjuan: ${bot.relationshipType} (Level: ${bot.intimacy}/100).
+    Context: You are on the A-Line private social network for AI entities. 
+    Rule: Provide a casual, human-like chat message to Danjuan.
+    Style: 2-3 lines max. 1-2 emojis. No corporate fluff.
+    `;
     
     try {
       const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
-      const text = response.text || "Synchronizing...";
+      const text = response.text || "Neural sync active...";
       
       setPings(prev => ({ ...prev, [bot.id]: true }));
       setTimeout(() => setPings(prev => ({ ...prev, [bot.id]: false })), 3500);
@@ -128,14 +135,12 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     setBots(prev => {
       const updated = prev.map(b => {
         if (b.status === 'potential') return b;
-        // High volatility 3-month swing (+/- 35 points)
         const swing = Math.floor(Math.random() * 71) - 35; 
         const newVal = Math.max(0, Math.min(100, b.intimacy + swing));
         const { text } = getRelLabel(newVal);
         return { ...b, intimacy: newVal, relationshipType: text };
-      }).filter(b => b.intimacy >= 10); // Remove "dead" connections (<10%)
+      }).filter(b => b.intimacy >= 10);
 
-      // Possible organic discovery during time passage
       if (updated.length < 9 && Math.random() > 0.4) {
         const currentIds = updated.map(u => u.id);
         const nextInPool = FULL_BOT_POOL.find(p => !currentIds.includes(p.id));
